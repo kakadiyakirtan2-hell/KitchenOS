@@ -11,7 +11,8 @@ import {
   Loader2,
   Key,
   Check,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { playChime, playSuccessCelebration } from '../utils/audio';
 import { getGeminiApiKey, saveUserGeminiKey } from '../services/geminiService';
@@ -24,6 +25,7 @@ interface AskChefMomBarProps {
   recentDishes?: Recipe[];
   onCookRecipe?: (recipe: Recipe) => void;
   onClearRecent?: () => void;
+  onDeleteDish?: (id: string) => void;
 }
 
 export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
@@ -32,7 +34,8 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
   inStockPantryCount,
   recentDishes,
   onCookRecipe,
-  onClearRecent
+  onClearRecent,
+  onDeleteDish
 }) => {
   const [servings, setServings] = useState(4);
   const [cravingText, setCravingText] = useState('');
@@ -241,16 +244,28 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
                       </div>
                     </div>
 
-                    {onCookRecipe && (
-                      <button
-                        type="button"
-                        onClick={() => onCookRecipe(r)}
-                        className="px-3 py-2 rounded-xl bg-gradient-to-r from-[#E06D53] to-[#F59E0B] text-white text-xs font-black shadow-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
-                      >
-                        <span>Cook</span>
-                        <span>👉</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {onCookRecipe && (
+                        <button
+                          type="button"
+                          onClick={() => onCookRecipe(r)}
+                          className="px-3 py-2 rounded-xl bg-gradient-to-r from-[#E06D53] to-[#F59E0B] text-white text-xs font-black shadow-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1"
+                        >
+                          <span>Cook</span>
+                          <span>👉</span>
+                        </button>
+                      )}
+                      {onDeleteDish && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteDish(r.id)}
+                          title="Remove dish"
+                          className="p-2 rounded-xl text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

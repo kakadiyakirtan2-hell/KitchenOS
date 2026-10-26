@@ -63,7 +63,9 @@ import { AskChefMomBar } from './components/AskChefMomBar';
 import {
   generateRecipesWithGemini,
   loadSavedCustomRecipes,
-  saveCustomRecipe
+  saveCustomRecipe,
+  deleteCustomRecipe,
+  filterNewUniqueRecipes
 } from './services/geminiService';
 import confetti from 'canvas-confetti';
 
@@ -370,6 +372,8 @@ export function App() {
     setGenerationError(null);
     try {
       const inStockNames = pantryItems.filter((i) => i.inStock).map((i) => i.name);
+      const existingTitles = [...customRecipes, ...RECIPES].map((r) => r.title);
+
       const generated = await generateRecipesWithGemini({
         pantry: inStockNames,
         servings,
@@ -377,12 +381,16 @@ export function App() {
         weather,
         mood,
         extraNotes: craving,
+        existingTitles,
       });
 
-      if (generated && generated.length > 0) {
-        // Persist each in localStorage and state
-        generated.forEach((r) => saveCustomRecipe(r));
-        setCustomRecipes((prev) => [...generated, ...prev]);
+      // Strictly filter out any duplicates against existing customRecipes and built-in recipes
+      const uniqueNewRecipes = filterNewUniqueRecipes(generated, [...customRecipes, ...RECIPES]);
+
+      if (uniqueNewRecipes && uniqueNewRecipes.length > 0) {
+        // Persist only truly unique dishes
+        uniqueNewRecipes.forEach((r) => saveCustomRecipe(r));
+        setCustomRecipes((prev) => [...uniqueNewRecipes, ...prev]);
 
         // Reset active filters so user immediately sees the new dishes
         setTierFilter('all');
@@ -397,6 +405,8 @@ export function App() {
           origin: { y: 0.6 },
           colors: ['#E06D53', '#F59E0B', '#588157']
         });
+      } else if (generated && generated.length > 0) {
+        setGenerationError("Chef Mom generated recipes for this craving, but they are already in your kitchen collection! Check the recipes below.");
       } else {
         setGenerationError("Couldn't generate dishes this time. Try tapping a few pantry staples or giving a different craving!");
       }
@@ -406,6 +416,12 @@ export function App() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleDeleteCustomRecipe = (recipeId: string) => {
+    playChime('low');
+    const updated = deleteCustomRecipe(recipeId);
+    setCustomRecipes(updated);
   };
 
   const inStockPantryCount = pantryItems.filter((i) => i.inStock).length;
@@ -507,6 +523,7 @@ export function App() {
           inStockPantryCount={inStockPantryCount}
           recentDishes={customRecipes}
           onCookRecipe={handleStartCooking}
+          onDeleteDish={handleDeleteCustomRecipe}
           onClearRecent={() => {
             localStorage.removeItem('moms_rasoi_custom_recipes_v1');
             setCustomRecipes([]);

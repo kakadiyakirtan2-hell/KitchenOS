@@ -35,13 +35,89 @@ export interface GenerateRecipeParams {
   weather: Weather | 'Normal';
   mood: Mood | 'Comfort';
   extraNotes?: string;
+  existingTitles?: string[];
+}
+
+/**
+ * Normalizes recipe titles for deduplication comparison
+ * Strips parentheses, symbols, and whitespaces
+ */
+export function normalizeTitleForDeduplication(title: string): string {
+  if (!title) return '';
+  return title
+    .toLowerCase()
+    .replace(/\(.*?\)/g, '') // remove "(Crispy Potato Onion Fritters)"
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
+/**
+ * Checks if a recipe is a duplicate of any existing recipe in the provided list
+ */
+export function isDuplicateRecipe(newRecipe: Recipe, existingRecipes: Recipe[]): boolean {
+  const normNew = normalizeTitleForDeduplication(newRecipe.title);
+  if (!normNew) return false;
+
+  return existingRecipes.some((existing) => {
+    // 1. Same ID
+    if (existing.id === newRecipe.id) return true;
+
+    // 2. Normalized Title match
+    const normExisting = normalizeTitleForDeduplication(existing.title);
+    if (normNew === normExisting) return true;
+
+    // 3. Substring containment if significant length (e.g. "Aloo Tikki" vs "Crispy Aloo Tikki")
+    if (normNew.length >= 8 && normExisting.length >= 8) {
+      if (normNew.includes(normExisting) || normExisting.includes(normNew)) {
+        return true;
+      }
+    }
+
+    // 4. Hindi title match
+    if (newRecipe.hindiTitle && existing.hindiTitle) {
+      const hNew = newRecipe.hindiTitle.replace(/\s+/g, '');
+      const hExist = existing.hindiTitle.replace(/\s+/g, '');
+      if (hNew && hExist && hNew === hExist) return true;
+    }
+
+    return false;
+  });
+}
+
+/**
+ * Filters a list of newly generated recipes, keeping only those that are not duplicates
+ * of existing recipes or duplicates within the new batch itself.
+ */
+export function filterNewUniqueRecipes(newRecipes: Recipe[], existingRecipes: Recipe[]): Recipe[] {
+  const uniqueResult: Recipe[] = [];
+
+  for (const r of newRecipes) {
+    const allKnown = [...existingRecipes, ...uniqueResult];
+    if (!isDuplicateRecipe(r, allKnown)) {
+      uniqueResult.push(r);
+    }
+  }
+
+  return uniqueResult;
 }
 
 export function loadSavedCustomRecipes(): Recipe[] {
   try {
     const raw = localStorage.getItem(CUSTOM_RECIPES_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: Recipe[] = JSON.parse(raw);
+      // Clean up any historical duplicates saved previously
+      const unique: Recipe[] = [];
+      for (const recipe of parsed) {
+        if (!isDuplicateRecipe(recipe, unique)) {
+          unique.push(recipe);
+        }
+      }
+      // If duplicates were found and cleaned, resave the clean list
+      if (unique.length !== parsed.length) {
+        localStorage.setItem(CUSTOM_RECIPES_STORAGE_KEY, JSON.stringify(unique));
+      }
+      return unique;
     }
   } catch (err) {
     console.warn('Failed to load custom recipes from localStorage', err);
@@ -52,10 +128,24 @@ export function loadSavedCustomRecipes(): Recipe[] {
 export function saveCustomRecipe(recipe: Recipe): void {
   try {
     const existing = loadSavedCustomRecipes();
-    const updated = [recipe, ...existing.filter((r) => r.id !== recipe.id)];
+    // Filter out if duplicate already exists
+    const filtered = existing.filter((r) => !isDuplicateRecipe(recipe, [r]));
+    const updated = [recipe, ...filtered];
     localStorage.setItem(CUSTOM_RECIPES_STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
     console.error('Failed to save custom recipe', err);
+  }
+}
+
+export function deleteCustomRecipe(id: string): Recipe[] {
+  try {
+    const existing = loadSavedCustomRecipes();
+    const updated = existing.filter((r) => r.id !== id);
+    localStorage.setItem(CUSTOM_RECIPES_STORAGE_KEY, JSON.stringify(updated));
+    return updated;
+  } catch (err) {
+    console.error('Failed to delete custom recipe', err);
+    return [];
   }
 }
 
@@ -76,6 +166,7 @@ export async function generateRecipesWithGemini(
   let weather: Weather | 'Normal' = 'Normal';
   let mood: Mood | 'Comfort' = 'Comfort';
   let extraNotes = '';
+  let existingTitles: string[] = [];
 
   if (Array.isArray(paramsOrPantry)) {
     // Positional call or pantry array
@@ -98,6 +189,7 @@ export async function generateRecipesWithGemini(
     weather = paramsOrPantry.weather || 'Normal';
     mood = paramsOrPantry.mood || 'Comfort';
     extraNotes = paramsOrPantry.extraNotes || '';
+    existingTitles = Array.isArray(paramsOrPantry.existingTitles) ? paramsOrPantry.existingTitles : [];
   }
 
   if (pantry.length === 0) {
@@ -118,6 +210,7 @@ export async function generateRecipesWithGemini(
         weather,
         mood,
         extraNotes,
+        existingTitles: existingTitles.slice(0, 25),
         apiKey: effectiveApiKey,
       }),
     });
@@ -144,12 +237,14 @@ USER INPUT:
 - Current Weather: ${weather}
 - Mood / Style: ${mood}
 - Specific request / craving: ${extraNotes || 'None'}
+${existingTitles.length > 0 ? `- Already In Collection (DO NOT DUPLICATE): ${existingTitles.slice(0, 20).join(', ')}` : ''}
 
 RULES:
 1. Suggest 2 practical, delicious, authentic home-cooked dishes tailored to the requested servings and cravings.
 2. Maximize the use of the listed available pantry items.
 3. Keep instructions step-by-step, simple, and mom-friendly.
-4. Output ONLY a valid JSON array matching this exact schema:
+4. DO NOT suggest or duplicate any recipe title already in mom's collection listed above. Suggest distinct dishes.
+5. Output ONLY a valid JSON array matching this exact schema:
 [
   {
     "id": "gemini-${Date.now()}-1",

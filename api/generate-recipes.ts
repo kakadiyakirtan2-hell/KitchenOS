@@ -21,6 +21,7 @@ export default async function handler(req: Request) {
       weather = 'Normal',
       mood = 'Comfort',
       extraNotes = '',
+      existingTitles = [],
       apiKey: clientKey = ''
     } = await req.json();
 
@@ -38,6 +39,10 @@ export default async function handler(req: Request) {
       );
     }
 
+    const avoidList = Array.isArray(existingTitles) && existingTitles.length > 0
+      ? `- Already In Collection (DO NOT DUPLICATE): ${existingTitles.slice(0, 20).join(', ')}`
+      : '';
+
     const prompt = `
 You are a warm, traditional home-cooking culinary assistant designed for an Indian mother ("Mom's Rasoi").
 The user wants custom home-cooked recipes that can be prepared with what they currently have in their kitchen.
@@ -49,12 +54,14 @@ USER INPUT:
 - Current Weather: ${weather || 'Normal'}
 - Mood / Style: ${mood || 'Comfort'}
 - Specific request / craving: ${extraNotes || 'None'}
+${avoidList}
 
 RULES:
 1. Suggest 2 practical, delicious, authentic home-cooked dishes tailored to the requested servings and cravings.
 2. Maximize the use of the listed available pantry items.
-3. Keep instructions step-by-step, simple, and mom-friendly.
-4. Output ONLY a valid JSON array matching this exact schema:
+3. DO NOT suggest or duplicate any recipe title already in mom's collection listed above. Suggest distinct dishes.
+4. Keep instructions step-by-step, simple, and mom-friendly.
+5. Output ONLY a valid JSON array matching this exact schema:
 [
   {
     "id": "gemini-${Date.now()}-1",
