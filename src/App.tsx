@@ -67,6 +67,12 @@ import {
   deleteCustomRecipe,
   filterNewUniqueRecipes
 } from './services/geminiService';
+import {
+  Language,
+  loadSavedLanguage,
+  saveLanguage,
+  getTranslation
+} from './utils/translations';
 import confetti from 'canvas-confetti';
 
 // Essential staples for the quick-tap pantry rack on the home screen
@@ -109,6 +115,7 @@ export function App() {
   const [customRecipes, setCustomRecipes] = useState<Recipe[]>(() => loadSavedCustomRecipes());
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<Language>(() => loadSavedLanguage());
 
   // 2. Context Engine Settings
   const initialContext = useMemo(() => loadContext(), []);
@@ -469,6 +476,11 @@ export function App() {
           setSoundOn(next);
           setSoundEnabled(next);
         }}
+        currentLanguage={language}
+        onSelectLanguage={(lang) => {
+          setLanguage(lang);
+          saveLanguage(lang);
+        }}
       />
 
       {/* 2. Hero Warm Kitchen Studio Banner with Ambient Glow */}
@@ -481,37 +493,37 @@ export function App() {
             <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-[#E4D7C5] shadow-2xs mb-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#E06D53] animate-pulse" />
               <span className="text-[11px] font-black uppercase tracking-wider text-[#E06D53]">
-                Mom’s Rasoi Studio Console
+                {getTranslation('consoleBadge', language)}
               </span>
               <span className="text-gray-300">•</span>
               <span className="text-[11px] text-[#7D7065] font-bold">
-                100% Algorithmic Kitchen Matcher
+                {getTranslation('algorithmicMatcher', language)}
               </span>
             </div>
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#2D3142] font-heading tracking-tight leading-tight">
-              What should Mom cook{' '}
+              {getTranslation('heroQuestion', language)}{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E06D53] via-[#E87A62] to-[#F59E0B]">
-                right now?
+                {getTranslation('heroRightNow', language)}
               </span>
             </h2>
             <p className="text-xs sm:text-sm text-[#7D7065] mt-1.5 max-w-2xl leading-relaxed">
-              Filtered strictly by what is in your kitchen stock, your current meal window, the weather, and your energy meter.
+              {getTranslation('heroSubtitle', language)}
             </p>
           </div>
 
           {/* Quick Metrics Capsule */}
           <div className="flex items-center gap-3 bg-white/90 backdrop-blur-md p-2.5 rounded-3xl border border-[#E4D7C5] shadow-kitchen">
             <div className="px-4 py-2 bg-[#EBF5EE] rounded-2xl border border-[#588157]/20 text-center">
-              <p className="text-[10px] font-black text-[#1E5224] uppercase">Ready Now</p>
+              <p className="text-[10px] font-black text-[#1E5224] uppercase">{getTranslation('readyNow', language)}</p>
               <p className="text-xl font-black text-[#2E5E2D] font-mono">{readyCount}</p>
             </div>
             <div className="px-4 py-2 bg-[#FFFBEB] rounded-2xl border border-[#F59E0B]/20 text-center">
-              <p className="text-[10px] font-black text-[#92400E] uppercase">Missing 1-2</p>
+              <p className="text-[10px] font-black text-[#92400E] uppercase">{getTranslation('missingFew', language)}</p>
               <p className="text-xl font-black text-[#B45309] font-mono">{missingCount}</p>
             </div>
             <div className="px-4 py-2 bg-[#F7F3EB] rounded-2xl border border-[#E8DEC8] text-center">
-              <p className="text-[10px] font-black text-[#7D7065] uppercase">In Stock</p>
+              <p className="text-[10px] font-black text-[#7D7065] uppercase">{getTranslation('inStock', language)}</p>
               <p className="text-xl font-black text-[#2D3142] font-mono">{inStockPantryCount}</p>
             </div>
           </div>
@@ -622,10 +634,10 @@ export function App() {
               </span>
               <div>
                 <h4 className="text-xs sm:text-sm font-extrabold text-[#2D3142] font-heading uppercase tracking-wide">
-                  Quick Kitchen Tap Rack
+                  {getTranslation('quickTapTitle', language)}
                 </h4>
                 <p className="text-[11px] text-[#7D7065]">
-                  Tap staples to toggle in/out of stock. Dishes update in real time!
+                  {getTranslation('quickTapSubtitle', language)}
                 </p>
               </div>
             </div>
@@ -634,7 +646,7 @@ export function App() {
               onClick={() => setIsPantryOpen(true)}
               className="text-xs font-black text-[#E06D53] hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>View All ({pantryItems.length}) 👉</span>
+              <span>{getTranslation('viewAllStock', language)}</span>
             </button>
           </div>
 
@@ -767,7 +779,7 @@ export function App() {
                     : 'bg-white text-[#1E5224] border border-[#588157]/30 hover:bg-[#588157]/10'
                 }`}
               >
-                <span>🟢 Ready to Cook!</span>
+                <span>{getTranslation('readyFilter', language)}</span>
                 <span className="text-[11px] bg-white/30 px-2 py-0.5 rounded-full font-black">
                   {readyCount}
                 </span>
@@ -784,7 +796,7 @@ export function App() {
                     : 'bg-white text-[#92400E] border border-[#F59E0B]/30 hover:bg-[#F59E0B]/10'
                 }`}
               >
-                <span>🟡 Missing 1-2 Items</span>
+                <span>{getTranslation('missingFilter', language)}</span>
                 <span className="text-[11px] bg-black/15 px-2 py-0.5 rounded-full font-black">
                   {missingCount}
                 </span>
@@ -801,7 +813,7 @@ export function App() {
                     : 'bg-white text-[#7D7065] border border-[#E8DEC8] hover:bg-gray-50'
                 }`}
               >
-                <span>⚪ Explore Others</span>
+                <span>{getTranslation('exploreFilter', language)}</span>
                 <span className="text-[11px] bg-white/30 px-2 py-0.5 rounded-full font-black">
                   {exploreCount}
                 </span>
@@ -814,7 +826,7 @@ export function App() {
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search khichdi, paneer, paratha..."
+                  placeholder={getTranslation('searchPlaceholder', language)}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white rounded-2xl border border-[#E8DEC8] text-xs sm:text-sm text-[#2D3142] focus:outline-none focus:border-[#E06D53]"
@@ -904,13 +916,13 @@ export function App() {
                     <span className="w-3.5 h-3.5 rounded-full bg-[#588157] animate-pulse" />
                     <div>
                       <h3 className="text-base sm:text-lg font-black text-[#1E5224] font-heading flex items-center gap-2">
-                        <span>🟢 Ready to Cook Right Now!</span>
+                        <span>{getTranslation('readyToCookSection', language)}</span>
                         <span className="text-xs bg-[#EBF5EE] text-[#1E5224] px-2.5 py-0.5 rounded-full border border-[#588157]/30 font-mono font-black">
                           {readyDishes.length} {readyDishes.length === 1 ? 'dish' : 'dishes'}
                         </span>
                       </h3>
                       <p className="text-[11px] text-[#588157] font-semibold">
-                        All ingredients in your pantry right now — start cooking immediately!
+                        {getTranslation('readyToCookSub', language)}
                       </p>
                     </div>
                   </div>
@@ -927,6 +939,7 @@ export function App() {
                       onQueueContinuous={handleQueueContinuous}
                       isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
                       onToggleFavorite={handleToggleFavorite}
+                      currentLanguage={language}
                     />
                   ))}
                 </div>
@@ -941,13 +954,13 @@ export function App() {
                     <span className="w-3.5 h-3.5 rounded-full bg-[#F59E0B]" />
                     <div>
                       <h3 className="text-base sm:text-lg font-black text-[#92400E] font-heading flex items-center gap-2">
-                        <span>🟡 Missing Only 1-2 Items</span>
+                        <span>{getTranslation('missingFewSection', language)}</span>
                         <span className="text-xs bg-[#FFFBEB] text-[#92400E] px-2.5 py-0.5 rounded-full border border-[#F59E0B]/30 font-mono font-black">
                           {missingDishes.length} {missingDishes.length === 1 ? 'dish' : 'dishes'}
                         </span>
                       </h3>
                       <p className="text-[11px] text-[#92400E] font-semibold">
-                        Almost ready! Each card shows instant home substitutes.
+                        {getTranslation('missingFewSub', language)}
                       </p>
                     </div>
                   </div>
@@ -964,6 +977,7 @@ export function App() {
                       onQueueContinuous={handleQueueContinuous}
                       isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
                       onToggleFavorite={handleToggleFavorite}
+                      currentLanguage={language}
                     />
                   ))}
                 </div>
@@ -978,13 +992,13 @@ export function App() {
                     <span className="w-3.5 h-3.5 rounded-full bg-gray-400" />
                     <div>
                       <h3 className="text-base sm:text-lg font-black text-[#7D7065] font-heading flex items-center gap-2">
-                        <span>⚪ More {mealSlot} Ideas</span>
+                        <span>{getTranslation('moreIdeasSection', language)} ({mealSlot})</span>
                         <span className="text-xs bg-gray-100 text-[#7D7065] px-2.5 py-0.5 rounded-full border border-gray-200 font-mono font-black">
                           {exploreDishes.length}
                         </span>
                       </h3>
                       <p className="text-[11px] text-[#7D7065]">
-                        Requires shopping or additional pantry staples.
+                        {getTranslation('moreIdeasSub', language)}
                       </p>
                     </div>
                   </div>
@@ -1001,6 +1015,7 @@ export function App() {
                       onQueueContinuous={handleQueueContinuous}
                       isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
                       onToggleFavorite={handleToggleFavorite}
+                      currentLanguage={language}
                     />
                   ))}
                 </div>
@@ -1019,6 +1034,7 @@ export function App() {
                 onQueueContinuous={handleQueueContinuous}
                 isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
                 onToggleFavorite={handleToggleFavorite}
+                currentLanguage={language}
               />
             ))}
           </div>

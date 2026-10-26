@@ -8,10 +8,12 @@ import {
   VolumeX,
   Flame,
   Clock,
-  ChefHat
+  ChefHat,
+  Globe
 } from 'lucide-react';
 import { MealSlot } from '../types';
 import { playChime } from '../utils/audio';
+import { Language, LANGUAGES, getTranslation } from '../utils/translations';
 
 interface NavbarProps {
   inStockCount: number;
@@ -24,6 +26,8 @@ interface NavbarProps {
   soundOn: boolean;
   onToggleSound: () => void;
   activeStoveCount?: number;
+  currentLanguage: Language;
+  onSelectLanguage: (lang: Language) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -36,7 +40,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenJournal,
   soundOn,
   onToggleSound,
-  activeStoveCount = 0
+  activeStoveCount = 0,
+  currentLanguage,
+  onSelectLanguage
 }) => {
   // Live clock
   const [timeStr, setTimeStr] = useState<string>('');
@@ -71,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg sm:text-xl font-extrabold text-[#2D3142] font-heading tracking-tight flex items-center gap-1.5">
-                <span>Mom’s Rasoi</span>
+                <span>{getTranslation('appTitle', currentLanguage)}</span>
                 <span className="text-[10px] font-bold tracking-widest text-[#E06D53] uppercase bg-[#E06D53]/10 px-2 py-0.5 rounded-md border border-[#E06D53]/20">
                   OS 2.0
                 </span>
@@ -94,6 +100,28 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right: Tactile Quick-Action Console Pills */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Language Switcher: English, Hindi, Gujarati */}
+          <div className="flex items-center bg-[#F4EFE6] p-0.5 rounded-2xl border border-[#DECDB8] shadow-2xs">
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                onClick={() => {
+                  playChime('med');
+                  onSelectLanguage(l.code);
+                }}
+                className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  currentLanguage === l.code
+                    ? 'bg-[#E06D53] text-white shadow-xs'
+                    : 'text-[#7D7065] hover:text-[#2D3142] hover:bg-white/60'
+                }`}
+                title={`${l.label} (${l.nativeName})`}
+              >
+                <span>{l.short}</span>
+              </button>
+            ))}
+          </div>
+
           {/* Smart Pantry Button with Glowing Count */}
           <button
             onClick={() => {
@@ -106,8 +134,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div className="text-left hidden md:block leading-tight">
-              <p className="text-[10px] text-[#7D7065] font-medium">Stock</p>
-              <p className="text-xs font-extrabold text-[#2D3142]">Pantry</p>
+              <p className="text-[10px] text-[#7D7065] font-medium">{getTranslation('stockLabel', currentLanguage)}</p>
+              <p className="text-xs font-extrabold text-[#2D3142]">{getTranslation('pantryStock', currentLanguage)}</p>
             </div>
             <span className="text-xs font-black text-[#2E5E2D] bg-[#EAF4EB] px-2 py-0.5 rounded-full border border-[#588157]/20 shadow-2xs">
               {inStockCount}
@@ -127,8 +155,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E06D53]" />
             </div>
             <div className="text-left hidden lg:block leading-tight">
-              <p className="text-[10px] text-[#7D7065] font-medium">3-Burner</p>
-              <p className="text-xs font-extrabold text-[#2D3142]">Stove Flow</p>
+              <p className="text-[10px] text-[#7D7065] font-medium">{getTranslation('threeBurner', currentLanguage)}</p>
+              <p className="text-xs font-extrabold text-[#2D3142]">{getTranslation('stoveFlow', currentLanguage)}</p>
             </div>
           </button>
 
@@ -143,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Sparkles className="w-4 h-4 text-[#F59E0B] group-hover:rotate-12 transition-transform" />
             <span className="text-xs font-extrabold hidden sm:inline">
-              Video Studio
+              {getTranslation('videoStudio', currentLanguage)}
             </span>
           </button>
 

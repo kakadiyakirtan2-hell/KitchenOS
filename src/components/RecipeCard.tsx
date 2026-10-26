@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ScoredRecipe, Recipe } from '../types';
 import { playChime } from '../utils/audio';
+import { Language } from '../utils/translations';
 
 interface RecipeCardProps {
   scoredRecipe: ScoredRecipe;
@@ -22,6 +23,7 @@ interface RecipeCardProps {
   onQueueContinuous?: (recipe: Recipe) => void;
   isFavorite?: boolean;
   onToggleFavorite?: (recipeId: string) => void;
+  currentLanguage?: Language;
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({
@@ -31,7 +33,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   onOpenTechnique,
   onQueueContinuous,
   isFavorite = false,
-  onToggleFavorite
+  onToggleFavorite,
+  currentLanguage = 'en'
 }) => {
   const { recipe, baseScore, finalScore, tier, missingRequired } = scoredRecipe;
 
@@ -151,13 +154,26 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           </div>
 
           <div className="flex-1 truncate">
-            <h3 className="text-base sm:text-lg font-extrabold text-[#2D3142] font-heading group-hover:text-[#E06D53] transition-colors leading-snug">
-              {recipe.title}
-            </h3>
-            {recipe.hindiTitle && (
-              <p className="text-xs font-semibold text-[#8C7A6B]">
-                {recipe.hindiTitle}
-              </p>
+            {currentLanguage !== 'en' && recipe.hindiTitle ? (
+              <>
+                <h3 className="text-base sm:text-lg font-extrabold text-[#2D3142] font-heading group-hover:text-[#E06D53] transition-colors leading-snug">
+                  {recipe.hindiTitle}
+                </h3>
+                <p className="text-xs font-semibold text-[#8C7A6B]">
+                  {recipe.title}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base sm:text-lg font-extrabold text-[#2D3142] font-heading group-hover:text-[#E06D53] transition-colors leading-snug">
+                  {recipe.title}
+                </h3>
+                {recipe.hindiTitle && (
+                  <p className="text-xs font-semibold text-[#8C7A6B]">
+                    {recipe.hindiTitle}
+                  </p>
+                )}
+              </>
             )}
             <span className="inline-block text-[10px] font-bold text-[#E06D53] uppercase tracking-wider mt-0.5">
               {recipe.cuisine}
@@ -237,7 +253,13 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#E06D53] to-[#F59E0B] text-white font-heading font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-kitchen-button hover:brightness-105 active:scale-98 transition-all cursor-pointer"
         >
           <Play className="w-4 h-4 fill-white" />
-          <span>Start Cooking</span>
+          <span>
+            {currentLanguage === 'hi'
+              ? 'पकाना शुरू करें'
+              : currentLanguage === 'gu'
+              ? 'રાંધવાનું શરૂ કરો'
+              : 'Start Cooking'}
+          </span>
         </button>
 
         {onQueueContinuous && (
