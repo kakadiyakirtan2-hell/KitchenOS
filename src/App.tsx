@@ -76,7 +76,21 @@ const QUICK_PANTRY_ITEMS = [
   { id: 'bread', name: 'Bread', icon: '🍞' },
 ];
 
-const CUISINES = ['All', 'Indian Comfort', 'North Indian', 'South Indian', 'Gujarati', 'Street Food', 'Italian / Fusion'];
+const CUISINES = [
+  'All',
+  'Punjabi',
+  'Gujarati',
+  'South Indian',
+  'Maharashtrian',
+  'Rajasthani',
+  'Bihari',
+  'Bengali',
+  'Kerala',
+  'Kashmiri',
+  'Odia',
+  'Street Food',
+  'Mithai'
+];
 
 export function App() {
   // 1. Persistent Pantry & User Data

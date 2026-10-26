@@ -40,7 +40,11 @@ export function isIngredientInStock(
       'suji', 'rava', 'oats', 'chana', 'rajma', 'cauliflower', 'gobi', 'peas',
       'matar', 'capsicum', 'carrot', 'garlic', 'ginger', 'chili', 'cumin',
       'mustard', 'turmeric', 'coriander', 'noodles', 'pasta', 'bread', 'sabudana',
-      'eggplant', 'baingan', 'oil', 'salt', 'sugar', 'methi', 'lemon'
+      'eggplant', 'baingan', 'oil', 'salt', 'sugar', 'methi', 'lemon',
+      'sattu', 'makki', 'coconut', 'tamarind', 'imli', 'jaggery', 'gur', 'cashew',
+      'kaju', 'curry', 'bhindi', 'okra', 'lauki', 'gourd', 'drumstick', 'cabbage',
+      'mint', 'pudina', 'amchur', 'saunf', 'fennel', 'ajwain', 'pepper', 'cardamom',
+      'hing', 'vermicelli', 'soya'
     ];
 
     for (const token of commonSignificantTokens) {
