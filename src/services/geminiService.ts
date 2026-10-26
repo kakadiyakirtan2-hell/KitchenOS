@@ -4,7 +4,7 @@ const CUSTOM_RECIPES_STORAGE_KEY = 'moms_rasoi_custom_recipes_v1';
 const USER_KEY_STORAGE = 'moms_rasoi_gemini_api_key';
 
 // Encoded default fallback key (decoded at runtime)
-const DEFAULT_B64 = 'QVEuQWI4Uk42S0RvRm40R0hjSnF3TGVuaXQ1WjdyQ3NXNFhOYmJvYVlsWTRFU1V0RWJUTmc=';
+const DEFAULT_B64 = 'QVEuQWI4Uk42S0RvRm40R0hjSnF3TGVuaXQ1WjdyQ3NXNFhOYmJvYVlsWTRFU1V0RWJUbmc=';
 
 export function getGeminiApiKey(): string {
   try {

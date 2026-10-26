@@ -8,9 +8,13 @@ import {
   ChefHat,
   RotateCcw,
   Send,
-  Loader2
+  Loader2,
+  Key,
+  Check,
+  X
 } from 'lucide-react';
 import { playChime, playSuccessCelebration } from '../utils/audio';
+import { getGeminiApiKey, saveUserGeminiKey } from '../services/geminiService';
 
 interface AskChefMomBarProps {
   onGenerate: (craving: string, servings: number) => Promise<void>;
@@ -25,6 +29,9 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
 }) => {
   const [servings, setServings] = useState(4);
   const [cravingText, setCravingText] = useState('');
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [customKeyInput, setCustomKeyInput] = useState('');
+  const [keySavedToast, setKeySavedToast] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +39,25 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
     playChime('high');
     await onGenerate(cravingText.trim(), servings);
     setCravingText('');
+  };
+
+  const handleSaveKey = () => {
+    if (customKeyInput.trim()) {
+      saveUserGeminiKey(customKeyInput.trim());
+      playChime('high');
+      setKeySavedToast(true);
+      setTimeout(() => {
+        setKeySavedToast(false);
+        setShowKeyModal(false);
+      }, 1200);
+    }
+  };
+
+  const handleResetKey = () => {
+    localStorage.removeItem('moms_rasoi_gemini_api_key');
+    setCustomKeyInput('');
+    playChime('med');
+    setShowKeyModal(false);
   };
 
   const incrementServings = () => {
@@ -97,30 +123,45 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
               </div>
             </div>
 
-            {/* Servings Counter Pill */}
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-[#E8DEC8] shadow-2xs">
-              <span className="text-xs font-bold text-[#7D7065] flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 text-[#E06D53]" />
-                <span className="hidden sm:inline">Portions:</span>
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={decrementServings}
-                  className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#2D3142] flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="text-xs font-black text-[#2D3142] font-mono min-w-[50px] text-center">
-                  {servings} {servings === 1 ? 'person' : 'people'}
+            {/* Servings Counter Pill & Key Settings */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomKeyInput(localStorage.getItem('moms_rasoi_gemini_api_key') || '');
+                  setShowKeyModal(true);
+                }}
+                title="Gemini API Key Settings"
+                className="px-2.5 py-1.5 rounded-2xl bg-white border border-[#E8DEC8] hover:border-[#E06D53] text-[#7D7065] hover:text-[#E06D53] shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              >
+                <Key className="w-3.5 h-3.5 text-[#E06D53]" />
+                <span className="hidden sm:inline">API Key</span>
+              </button>
+
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-[#E8DEC8] shadow-2xs">
+                <span className="text-xs font-bold text-[#7D7065] flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-[#E06D53]" />
+                  <span className="hidden sm:inline">Portions:</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={incrementServings}
-                  className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#2D3142] flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={decrementServings}
+                    className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#2D3142] flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="text-xs font-black text-[#2D3142] font-mono min-w-[50px] text-center">
+                    {servings} {servings === 1 ? 'person' : 'people'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={incrementServings}
+                    className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#2D3142] flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -147,6 +188,85 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
             </button>
           </div>
         </form>
+      )}
+
+      {/* API Key Configuration Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-[#FFFBF7] rounded-3xl border-2 border-[#EADCCF] p-5 sm:p-6 max-w-md w-full shadow-kitchen-card flex flex-col gap-4 relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-[#E06D53]/10 text-[#E06D53]">
+                  <Key className="w-4 h-4" />
+                </span>
+                <h4 className="text-base font-black text-[#2D3142] font-heading">
+                  Gemini API Key Settings
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKeyModal(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#7D7065] leading-relaxed">
+              Mom's Rasoi uses Google Gemini to craft custom dishes from your pantry. You can paste your own API key from <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-[#E06D53] font-bold underline">Google AI Studio</a> below, or use the pre-configured studio key.
+            </p>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-[#7D7065] uppercase">
+                Gemini API Key
+              </label>
+              <input
+                type="text"
+                placeholder="AIzaSy... or AQ...."
+                value={customKeyInput}
+                onChange={(e) => setCustomKeyInput(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-[#D5C7B5] text-xs text-[#2D3142] font-mono focus:outline-none focus:border-[#E06D53]"
+              />
+              <span className="text-[10px] text-gray-400">
+                Key is stored securely only in your browser's localStorage.
+              </span>
+            </div>
+
+            {keySavedToast && (
+              <div className="bg-[#EBF5EE] text-[#1E5224] text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 border border-[#588157]/20">
+                <Check className="w-3.5 h-3.5 text-[#588157]" />
+                <span>API Key saved successfully!</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E8DEC8]">
+              <button
+                type="button"
+                onClick={handleResetKey}
+                className="text-xs font-bold text-gray-400 hover:text-[#E06D53] underline cursor-pointer"
+              >
+                Reset Default Key
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyModal(false)}
+                  className="px-3 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveKey}
+                  className="px-4 py-2 bg-[#E06D53] hover:bg-[#D05C42] text-white text-xs font-black rounded-xl shadow-xs cursor-pointer"
+                >
+                  Save Key
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
