@@ -115,13 +115,13 @@ export function scoreRecipe(
     : 100;
 
   // Bonus Points:
-  // +15% if matches current meal slot
-  // +10% if matches current weather
-  // +10% if matches current mood
+  // +25% if matches current meal slot
+  // +15% if matches current weather
+  // +15% if matches current mood
   let bonusScore = 0;
-  if (recipe.mealSlot.includes(currentMealSlot)) bonusScore += 15;
-  if (recipe.weather.includes(currentWeather)) bonusScore += 10;
-  if (recipe.mood.includes(currentMood)) bonusScore += 10;
+  if (recipe.mealSlot.includes(currentMealSlot)) bonusScore += 25;
+  if (recipe.weather.includes(currentWeather)) bonusScore += 15;
+  if (recipe.mood.includes(currentMood)) bonusScore += 15;
 
   const rawFinalScore = baseScore + (baseScore > 0 ? bonusScore : 0);
   const finalScore = Math.min(100, Math.round(rawFinalScore));
@@ -187,19 +187,41 @@ export function scoreAndRankRecipes(
   );
 
   return scored.sort((a, b) => {
-    // If one is freshly created, it always goes to the very top!
+    // 1. If one is freshly created, it always goes to the very top!
     const aFresh = a.recipe.tags?.includes('Freshly Created') ? 1 : 0;
     const bFresh = b.recipe.tags?.includes('Freshly Created') ? 1 : 0;
     if (aFresh !== bFresh) {
       return bFresh - aFresh;
     }
 
-    // Tier weight: ready (3) > missing-few (2) > explore (1)
+    // 2. Strict Meal Slot prioritization: Recipes matching current meal slot come first!
+    const aMatchesSlot = a.recipe.mealSlot.includes(currentMealSlot) ? 1 : 0;
+    const bMatchesSlot = b.recipe.mealSlot.includes(currentMealSlot) ? 1 : 0;
+    if (aMatchesSlot !== bMatchesSlot) {
+      return bMatchesSlot - aMatchesSlot;
+    }
+
+    // 3. Tier weight within same slot: ready (3) > missing-few (2) > explore (1)
     const tierWeight = { ready: 3, 'missing-few': 2, explore: 1 };
     if (tierWeight[a.tier] !== tierWeight[b.tier]) {
       return tierWeight[b.tier] - tierWeight[a.tier];
     }
-    // Then by final score descending
+
+    // 4. Weather match prioritization (e.g. Rainy snacks during Rainy weather)
+    const aWeather = a.recipe.weather.includes(currentWeather) ? 1 : 0;
+    const bWeather = b.recipe.weather.includes(currentWeather) ? 1 : 0;
+    if (aWeather !== bWeather) {
+      return bWeather - aWeather;
+    }
+
+    // 5. Mood match prioritization (e.g. Quick dishes when Quick is selected)
+    const aMood = a.recipe.mood.includes(currentMood) ? 1 : 0;
+    const bMood = b.recipe.mood.includes(currentMood) ? 1 : 0;
+    if (aMood !== bMood) {
+      return bMood - aMood;
+    }
+
+    // 6. Then by final score descending
     if (b.finalScore !== a.finalScore) {
       return b.finalScore - a.finalScore;
     }

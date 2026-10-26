@@ -130,6 +130,7 @@ export function App() {
   const [selectedCuisine, setSelectedCuisine] = useState<string>('All');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [maxTimeFilter, setMaxTimeFilter] = useState<number>(60);
+  const [onlyCurrentMealSlot, setOnlyCurrentMealSlot] = useState(true);
 
   // 4. Modals State
   const [isPantryOpen, setIsPantryOpen] = useState(false);
@@ -189,28 +190,37 @@ export function App() {
     return scoreAndRankRecipes(allAvailableRecipes, pantryItems, mealSlot, weather, mood);
   }, [allAvailableRecipes, pantryItems, mealSlot, weather, mood]);
 
-  // Tier counts
+  // Context-aware recipes (filtered strictly by current meal slot if strict mode is active)
+  const activeContextRecipes = useMemo(() => {
+    if (onlyCurrentMealSlot) {
+      const inSlot = rankedRecipes.filter((r) => r.recipe.mealSlot.includes(mealSlot));
+      return inSlot.length > 0 ? inSlot : rankedRecipes;
+    }
+    return rankedRecipes;
+  }, [rankedRecipes, onlyCurrentMealSlot, mealSlot]);
+
+  // Tier counts strictly for active context
   const readyCount = useMemo(
-    () => rankedRecipes.filter((r) => r.tier === 'ready').length,
-    [rankedRecipes]
+    () => activeContextRecipes.filter((r) => r.tier === 'ready').length,
+    [activeContextRecipes]
   );
   const missingCount = useMemo(
-    () => rankedRecipes.filter((r) => r.tier === 'missing-few').length,
-    [rankedRecipes]
+    () => activeContextRecipes.filter((r) => r.tier === 'missing-few').length,
+    [activeContextRecipes]
   );
   const exploreCount = useMemo(
-    () => rankedRecipes.filter((r) => r.tier === 'explore').length,
-    [rankedRecipes]
+    () => activeContextRecipes.filter((r) => r.tier === 'explore').length,
+    [activeContextRecipes]
   );
 
-  // Spotlight Recipe (Top scored dish)
+  // Spotlight Recipe (Top scored dish for active context)
   const spotlightRecipe = useMemo(() => {
-    return rankedRecipes[0] || null;
-  }, [rankedRecipes]);
+    return activeContextRecipes[0] || null;
+  }, [activeContextRecipes]);
 
   // Filtered recipes
   const displayedRecipes = useMemo(() => {
-    return rankedRecipes.filter((item) => {
+    return activeContextRecipes.filter((item) => {
       // Tier filter
       if (tierFilter !== 'all' && item.tier !== tierFilter) return false;
 
@@ -248,7 +258,7 @@ export function App() {
       return true;
     });
   }, [
-    rankedRecipes,
+    activeContextRecipes,
     tierFilter,
     selectedCuisine,
     maxTimeFilter,
@@ -256,6 +266,19 @@ export function App() {
     searchQuery,
     recipeNotes
   ]);
+
+  const readyDishes = useMemo(
+    () => displayedRecipes.filter((r) => r.tier === 'ready'),
+    [displayedRecipes]
+  );
+  const missingDishes = useMemo(
+    () => displayedRecipes.filter((r) => r.tier === 'missing-few'),
+    [displayedRecipes]
+  );
+  const exploreDishes = useMemo(
+    () => displayedRecipes.filter((r) => r.tier === 'explore'),
+    [displayedRecipes]
+  );
 
   // Pantry handlers
   const handleTogglePantryItem = (id: string) => {
@@ -516,6 +539,48 @@ export function App() {
           }}
         />
 
+        {/* Live Active Context Bar */}
+        <div className="bg-gradient-to-r from-[#FFFDF9] via-[#FDF7EE] to-[#FFFBF5] border-2 border-[#F3DFCD] rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-kitchen">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#E06D53] to-[#F59E0B] text-white flex items-center justify-center text-xl shadow-md shrink-0">
+              {mealSlot === 'Breakfast' ? '🌅' : mealSlot === 'Lunch' ? '☀️' : mealSlot === 'Snacks' ? '☕' : '🌙'}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#E06D53] bg-[#E06D53]/10 px-2.5 py-0.5 rounded-full border border-[#E06D53]/20">
+                  Live Kitchen Tuning
+                </span>
+                <span className="text-xs sm:text-sm font-black text-[#2D3142] font-heading">
+                  {mealSlot === 'Snacks' ? '☕ Snacks / Chai Time' : mealSlot === 'Breakfast' ? '🌅 Morning Breakfast' : mealSlot === 'Lunch' ? '☀️ Afternoon Lunch' : '🌙 Evening Dinner'}
+                </span>
+                <span className="text-gray-300 hidden sm:inline">•</span>
+                <span className="text-xs text-[#7D7065] font-bold">
+                  {weather === 'Rainy' ? '🌧️ Rainy / Cool (Crispy & Warm)' : weather === 'Sunny' ? '☀️ Sunny / Hot (Light & Cooling)' : '❄️ Chilly Winter (Hearty & Rich)'}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#7D7065] mt-1">
+                Showing dishes matching your energy: <strong>{mood === 'Quick' ? 'Quick & Easy (< 20 mins)' : mood === 'Comfort' ? 'Comfort Food' : mood === 'Healthy' ? 'Light & Healthy' : 'Special Feast'}</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
+            <button
+              onClick={() => {
+                playChime('med');
+                setOnlyCurrentMealSlot(!onlyCurrentMealSlot);
+              }}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all border-2 cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                onlyCurrentMealSlot
+                  ? 'bg-[#588157] text-white border-[#588157]'
+                  : 'bg-white text-[#7D7065] border-[#E8DEC8] hover:border-[#588157]'
+              }`}
+            >
+              <span>{onlyCurrentMealSlot ? `✓ ${mealSlot} Dishes Only` : 'Showing All Slots'}</span>
+            </button>
+          </div>
+        </div>
+
         {/* Dynamic AI Recipe Engine: Ask Chef Mom */}
         <AskChefMomBar
           onGenerate={handleGenerateCustomDishes}
@@ -528,6 +593,9 @@ export function App() {
             localStorage.removeItem('moms_rasoi_custom_recipes_v1');
             setCustomRecipes([]);
           }}
+          mealSlot={mealSlot}
+          weather={weather}
+          mood={mood}
         />
 
         {generationError && (
@@ -682,9 +750,9 @@ export function App() {
                     : 'bg-white text-[#7D7065] border border-[#E8DEC8] hover:bg-gray-50'
                 }`}
               >
-                <span>All Dishes</span>
+                <span>{onlyCurrentMealSlot ? `All ${mealSlot}` : 'All Dishes'}</span>
                 <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded-full">
-                  {allAvailableRecipes.length}
+                  {onlyCurrentMealSlot ? activeContextRecipes.length : allAvailableRecipes.length}
                 </span>
               </button>
 
@@ -824,6 +892,120 @@ export function App() {
                 Open Kitchen Stock
               </button>
             </div>
+          </div>
+        ) : tierFilter === 'all' ? (
+          /* Dynamic Contextual Sections: Ready First, Then Missing 1-2, Then Others */
+          <div className="flex flex-col gap-8">
+            {/* 1. Ready to Cook Right Now Section */}
+            {readyDishes.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-2 border-b-2 border-[#588157]/20">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#588157] animate-pulse" />
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-[#1E5224] font-heading flex items-center gap-2">
+                        <span>🟢 Ready to Cook Right Now!</span>
+                        <span className="text-xs bg-[#EBF5EE] text-[#1E5224] px-2.5 py-0.5 rounded-full border border-[#588157]/30 font-mono font-black">
+                          {readyDishes.length} {readyDishes.length === 1 ? 'dish' : 'dishes'}
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-[#588157] font-semibold">
+                        All ingredients in your pantry right now — start cooking immediately!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {readyDishes.map((scored) => (
+                    <RecipeCard
+                      key={scored.recipe.id}
+                      scoredRecipe={scored}
+                      onCookRecipe={handleStartCooking}
+                      onOpenSubstituteModal={(sc) => setSubstituteModalScored(sc)}
+                      onOpenTechnique={handleOpenTechniqueVideo}
+                      onQueueContinuous={handleQueueContinuous}
+                      isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Missing Only 1-2 Items Section */}
+            {missingDishes.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-2 border-b-2 border-[#F59E0B]/20">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#F59E0B]" />
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-[#92400E] font-heading flex items-center gap-2">
+                        <span>🟡 Missing Only 1-2 Items</span>
+                        <span className="text-xs bg-[#FFFBEB] text-[#92400E] px-2.5 py-0.5 rounded-full border border-[#F59E0B]/30 font-mono font-black">
+                          {missingDishes.length} {missingDishes.length === 1 ? 'dish' : 'dishes'}
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-[#92400E] font-semibold">
+                        Almost ready! Each card shows instant home substitutes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {missingDishes.map((scored) => (
+                    <RecipeCard
+                      key={scored.recipe.id}
+                      scoredRecipe={scored}
+                      onCookRecipe={handleStartCooking}
+                      onOpenSubstituteModal={(sc) => setSubstituteModalScored(sc)}
+                      onOpenTechnique={handleOpenTechniqueVideo}
+                      onQueueContinuous={handleQueueContinuous}
+                      isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. More Recipes in this Category */}
+            {exploreDishes.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-2 border-b-2 border-gray-200">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3.5 h-3.5 rounded-full bg-gray-400" />
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-[#7D7065] font-heading flex items-center gap-2">
+                        <span>⚪ More {mealSlot} Ideas</span>
+                        <span className="text-xs bg-gray-100 text-[#7D7065] px-2.5 py-0.5 rounded-full border border-gray-200 font-mono font-black">
+                          {exploreDishes.length}
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-[#7D7065]">
+                        Requires shopping or additional pantry staples.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {exploreDishes.map((scored) => (
+                    <RecipeCard
+                      key={scored.recipe.id}
+                      scoredRecipe={scored}
+                      onCookRecipe={handleStartCooking}
+                      onOpenSubstituteModal={(sc) => setSubstituteModalScored(sc)}
+                      onOpenTechnique={handleOpenTechniqueVideo}
+                      onQueueContinuous={handleQueueContinuous}
+                      isFavorite={recipeNotes[scored.recipe.id]?.isFavorite || false}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

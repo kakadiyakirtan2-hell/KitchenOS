@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { playChime, playSuccessCelebration } from '../utils/audio';
 import { getGeminiApiKey, saveUserGeminiKey } from '../services/geminiService';
-import { Recipe } from '../types';
+import { Recipe, MealSlot, Weather, Mood } from '../types';
 
 interface AskChefMomBarProps {
   onGenerate: (craving: string, servings: number) => Promise<void>;
@@ -26,6 +26,9 @@ interface AskChefMomBarProps {
   onCookRecipe?: (recipe: Recipe) => void;
   onClearRecent?: () => void;
   onDeleteDish?: (id: string) => void;
+  mealSlot: MealSlot;
+  weather: Weather;
+  mood: Mood;
 }
 
 export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
@@ -35,13 +38,47 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
   recentDishes,
   onCookRecipe,
   onClearRecent,
-  onDeleteDish
+  onDeleteDish,
+  mealSlot,
+  weather,
+  mood
 }) => {
   const [servings, setServings] = useState(4);
   const [cravingText, setCravingText] = useState('');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [customKeyInput, setCustomKeyInput] = useState('');
   const [keySavedToast, setKeySavedToast] = useState(false);
+
+  const getSuggestions = () => {
+    if (mealSlot === 'Snacks') {
+      if (weather === 'Rainy') {
+        return ['🌧️ Crispy Chai Pakoras', '🥟 Hot Aloo Tikki', '🥪 Quick Bread Pakora'];
+      }
+      return ['☕ Tea Time Poha', '🥪 Bombay Toast Sandwich', '🥟 Crispy Samosa'];
+    }
+    if (mealSlot === 'Breakfast') {
+      return ['☀️ Kanda Poha', '🥞 Fluffy Besan Chilla', '🫓 Stuffed Aloo Paratha'];
+    }
+    if (mealSlot === 'Lunch') {
+      return ['🍛 Comforting Khichdi', '🍲 Quick Dal Tadka & Jeera Rice', '🥘 Paneer Bhurji'];
+    }
+    return ['🌙 Light Moong Dal Khichdi', '🫓 Warm Phulka & Sukhi Sabzi', '🍲 Homestyle Veg Pulao'];
+  };
+
+  const getPlaceholder = () => {
+    if (mealSlot === 'Snacks') {
+      return weather === 'Rainy'
+        ? 'Craving crispy pakoras, aloo tikkis, or hot chai treats for this rainy evening?...'
+        : 'Any snacks craving? (e.g. crispy evening snacks, tea-time chaat, light sandwich)...';
+    }
+    if (mealSlot === 'Breakfast') {
+      return 'Any breakfast craving? (e.g. steaming poha, stuffed parathas, healthy chilla)...';
+    }
+    if (mealSlot === 'Lunch') {
+      return 'Any lunch craving? (e.g. homestyle dal sabzi, rajma rice, comforting khichdi)...';
+    }
+    return 'Any dinner craving? (e.g. light khichdi, warm rotis & paneer, homestyle pulao)...';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,25 +214,47 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
           </div>
 
           {/* Input & Glowing Generate Button */}
-          <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="Any specific craving today? (e.g. something light, crispy evening snacks, sweet after dinner, kids tiffin)..."
-                value={cravingText}
-                onChange={(e) => setCravingText(e.target.value)}
-                className="w-full px-4 py-3 bg-white rounded-2xl border-2 border-[#EADCCF] text-xs sm:text-sm text-[#2D3142] placeholder:text-gray-400 focus:outline-none focus:border-[#E06D53] shadow-inner"
-              />
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder={getPlaceholder()}
+                  value={cravingText}
+                  onChange={(e) => setCravingText(e.target.value)}
+                  className="w-full px-4 py-3 bg-white rounded-2xl border-2 border-[#EADCCF] text-xs sm:text-sm text-[#2D3142] placeholder:text-gray-400 focus:outline-none focus:border-[#E06D53] shadow-inner"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#E06D53] via-[#E87A62] to-[#F59E0B] text-white font-heading font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-kitchen-button hover:brightness-105 active:scale-98 transition-all cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-4 h-4 fill-white animate-spin" style={{ animationDuration: '4s' }} />
+                <span>Generate Custom Dishes</span>
+              </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#E06D53] via-[#E87A62] to-[#F59E0B] text-white font-heading font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-kitchen-button hover:brightness-105 active:scale-98 transition-all cursor-pointer shrink-0"
-            >
-              <Sparkles className="w-4 h-4 fill-white animate-spin" style={{ animationDuration: '4s' }} />
-              <span>Generate Custom Dishes</span>
-            </button>
+            {/* Contextual Quick Suggestions Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
+              <span className="text-[10px] font-black uppercase text-[#7D7065] whitespace-nowrap">
+                Quick Craving:
+              </span>
+              {getSuggestions().map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    playChime('med');
+                    setCravingText(s.replace(/^[^\s]+\s/, ''));
+                  }}
+                  className="px-2.5 py-1 bg-white hover:bg-[#FDF6ED] border border-[#E8DEC8] hover:border-[#E06D53] text-[#2D3142] text-[11px] font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-2xs hover:scale-102"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Instant Freshly Generated Preview Carousel */}
