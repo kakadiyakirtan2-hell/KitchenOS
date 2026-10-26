@@ -59,6 +59,13 @@ import { ContinuousCookingModal } from './components/ContinuousCookingModal';
 import { VideoStudioModal } from './components/VideoStudioModal';
 import { MealJournalModal } from './components/MealJournalModal';
 import { SubstituteModal } from './components/SubstituteModal';
+import { AskChefMomBar } from './components/AskChefMomBar';
+import {
+  generateRecipesWithGemini,
+  loadSavedCustomRecipes,
+  saveCustomRecipe
+} from './services/geminiService';
+import confetti from 'canvas-confetti';
 
 // Essential staples for the quick-tap pantry rack on the home screen
 const QUICK_PANTRY_ITEMS = [
@@ -97,6 +104,9 @@ export function App() {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>(() => loadPantry());
   const [journalEntries, setJournalEntries] = useState<MealJournalEntry[]>(() => loadJournal());
   const [recipeNotes, setRecipeNotes] = useState<Record<string, RecipeNote>>(() => loadNotes());
+  const [customRecipes, setCustomRecipes] = useState<Recipe[]>(() => loadSavedCustomRecipes());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   // 2. Context Engine Settings
   const initialContext = useMemo(() => loadContext(), []);
@@ -169,9 +179,13 @@ export function App() {
   }, [mealSlot, weather, mood, isAutoMealSlot]);
 
   // 5. Rule-Based Scoring Engine
+  const allAvailableRecipes = useMemo(() => {
+    return [...customRecipes, ...RECIPES];
+  }, [customRecipes]);
+
   const rankedRecipes = useMemo(() => {
-    return scoreAndRankRecipes(RECIPES, pantryItems, mealSlot, weather, mood);
-  }, [pantryItems, mealSlot, weather, mood]);
+    return scoreAndRankRecipes(allAvailableRecipes, pantryItems, mealSlot, weather, mood);
+  }, [allAvailableRecipes, pantryItems, mealSlot, weather, mood]);
 
   // Tier counts
   const readyCount = useMemo(
@@ -350,6 +364,44 @@ export function App() {
     setJournalEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
+  // Dynamic Custom Recipe Generation via Gemini
+  const handleGenerateCustomDishes = async (craving: string, servings: number) => {
+    setIsGenerating(true);
+    setGenerationError(null);
+    try {
+      const inStockNames = pantryItems.filter((i) => i.inStock).map((i) => i.name);
+      const generated = await generateRecipesWithGemini({
+        pantry: inStockNames,
+        servings,
+        mealSlot,
+        weather,
+        mood,
+        extraNotes: craving,
+      });
+
+      if (generated && generated.length > 0) {
+        // Persist each in localStorage and state
+        generated.forEach((r) => saveCustomRecipe(r));
+        setCustomRecipes((prev) => [...generated, ...prev]);
+
+        playChime('high');
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#E06D53', '#F59E0B', '#588157']
+        });
+      } else {
+        setGenerationError("Couldn't generate dishes this time. Try tapping a few pantry staples or giving a different craving!");
+      }
+    } catch (err: any) {
+      console.error('Error generating custom dishes:', err);
+      setGenerationError(err?.message || 'Failed to generate recipes. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const inStockPantryCount = pantryItems.filter((i) => i.inStock).length;
 
   return (
@@ -441,6 +493,28 @@ export function App() {
             setMealSlot(detectAutoMealSlot());
           }}
         />
+
+        {/* Dynamic AI Recipe Engine: Ask Chef Mom */}
+        <AskChefMomBar
+          onGenerate={handleGenerateCustomDishes}
+          isLoading={isGenerating}
+          inStockPantryCount={inStockPantryCount}
+        />
+
+        {generationError && (
+          <div className="bg-[#FFF1EE] border border-[#E06D53]/30 rounded-2xl p-3.5 flex items-center justify-between text-xs text-[#992812] shadow-xs">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#E06D53] shrink-0" />
+              <span>{generationError}</span>
+            </div>
+            <button
+              onClick={() => setGenerationError(null)}
+              className="text-[11px] font-bold text-[#E06D53] hover:underline ml-2 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* 4. Interactive Quick-Tap Pantry Rack (The Spice & Veggie Basket) */}
         <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#E8DCCF] shadow-kitchen-card flex flex-col gap-3">

@@ -73,12 +73,21 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     >
       <div>
         {/* Top Header: Floating Status Bar */}
-        <div className="flex items-center justify-between gap-2 mb-3.5">
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-black border flex items-center gap-1.5 shadow-2xs ${tierConfig.badgeClass}`}
-          >
-            <span>{tierConfig.badge}</span>
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-black border flex items-center gap-1.5 shadow-2xs ${tierConfig.badgeClass}`}
+            >
+              <span>{tierConfig.badge}</span>
+            </span>
+
+            {recipe.tags.includes('Freshly Created') && (
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-gradient-to-r from-[#FFF5DC] to-[#FFEFE2] text-[#9A4600] border border-[#F5D4B2] flex items-center gap-1 shadow-2xs">
+                <Sparkles className="w-3 h-3 text-[#F59E0B]" />
+                <span>✨ Freshly Created for You</span>
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             {/* Radial Match Score Ring */}
