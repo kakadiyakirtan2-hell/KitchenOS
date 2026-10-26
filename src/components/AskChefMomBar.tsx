@@ -15,17 +15,24 @@ import {
 } from 'lucide-react';
 import { playChime, playSuccessCelebration } from '../utils/audio';
 import { getGeminiApiKey, saveUserGeminiKey } from '../services/geminiService';
+import { Recipe } from '../types';
 
 interface AskChefMomBarProps {
   onGenerate: (craving: string, servings: number) => Promise<void>;
   isLoading: boolean;
   inStockPantryCount: number;
+  recentDishes?: Recipe[];
+  onCookRecipe?: (recipe: Recipe) => void;
+  onClearRecent?: () => void;
 }
 
 export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
   onGenerate,
   isLoading,
-  inStockPantryCount
+  inStockPantryCount,
+  recentDishes,
+  onCookRecipe,
+  onClearRecent
 }) => {
   const [servings, setServings] = useState(4);
   const [cravingText, setCravingText] = useState('');
@@ -187,6 +194,68 @@ export const AskChefMomBar: React.FC<AskChefMomBarProps> = ({
               <span>Generate Custom Dishes</span>
             </button>
           </div>
+
+          {/* Instant Freshly Generated Preview Carousel */}
+          {recentDishes && recentDishes.length > 0 && (
+            <div className="mt-2 pt-4 border-t border-[#F5D8BE] flex flex-col gap-3 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎉</span>
+                  <span className="text-xs font-black text-[#2D3142] uppercase tracking-wide">
+                    Chef Mom Just Prepared {recentDishes.length} Custom Dish{recentDishes.length > 1 ? 'es' : ''} for You:
+                  </span>
+                </div>
+                {onClearRecent && (
+                  <button
+                    type="button"
+                    onClick={onClearRecent}
+                    className="text-[11px] font-bold text-gray-400 hover:text-[#E06D53] underline cursor-pointer"
+                  >
+                    Clear History
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {recentDishes.slice(0, 4).map((r) => (
+                  <div
+                    key={r.id}
+                    className="bg-white rounded-2xl p-3.5 border-2 border-[#E06D53]/30 shadow-xs flex items-center justify-between gap-3 hover:border-[#E06D53] transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-2xl p-2 rounded-xl bg-[#FAF6EF] shrink-0">
+                        {r.emoji || '🍲'}
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-[#2D3142] truncate">
+                          {r.title}
+                        </h4>
+                        {r.hindiTitle && (
+                          <p className="text-[11px] text-[#E06D53] font-bold truncate">
+                            {r.hindiTitle}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-[#7D7065] mt-0.5">
+                          ⏱️ {r.prepTime + r.cookTime} mins • 👥 {r.servings} servings
+                        </p>
+                      </div>
+                    </div>
+
+                    {onCookRecipe && (
+                      <button
+                        type="button"
+                        onClick={() => onCookRecipe(r)}
+                        className="px-3 py-2 rounded-xl bg-gradient-to-r from-[#E06D53] to-[#F59E0B] text-white text-xs font-black shadow-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
+                      >
+                        <span>Cook</span>
+                        <span>👉</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       )}
 

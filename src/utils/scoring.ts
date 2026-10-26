@@ -74,8 +74,29 @@ export function scoreRecipe(
   currentWeather: Weather,
   currentMood: Mood
 ): ScoredRecipe {
+  const isFreshlyCreated =
+    recipe.tags?.includes('Freshly Created') ||
+    recipe.id.startsWith('custom-') ||
+    recipe.id.startsWith('gemini-') ||
+    recipe.id.startsWith('moms-rasoi-');
+
   const requiredIngredients = recipe.ingredients.filter((i) => i.required);
   const totalRequired = requiredIngredients.length;
+
+  // Freshly created dishes were generated specifically for mom's pantry
+  if (isFreshlyCreated) {
+    return {
+      recipe,
+      baseScore: 100,
+      bonusScore: 35,
+      finalScore: 100,
+      tier: 'ready',
+      missingRequired: [],
+      missingSubstitutes: [],
+      matchedCount: totalRequired,
+      totalRequired
+    };
+  }
 
   let matchedCount = 0;
   const missingRequired: string[] = [];
@@ -166,6 +187,13 @@ export function scoreAndRankRecipes(
   );
 
   return scored.sort((a, b) => {
+    // If one is freshly created, it always goes to the very top!
+    const aFresh = a.recipe.tags?.includes('Freshly Created') ? 1 : 0;
+    const bFresh = b.recipe.tags?.includes('Freshly Created') ? 1 : 0;
+    if (aFresh !== bFresh) {
+      return bFresh - aFresh;
+    }
+
     // Tier weight: ready (3) > missing-few (2) > explore (1)
     const tierWeight = { ready: 3, 'missing-few': 2, explore: 1 };
     if (tierWeight[a.tier] !== tierWeight[b.tier]) {

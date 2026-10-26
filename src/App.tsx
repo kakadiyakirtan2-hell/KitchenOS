@@ -384,6 +384,12 @@ export function App() {
         generated.forEach((r) => saveCustomRecipe(r));
         setCustomRecipes((prev) => [...generated, ...prev]);
 
+        // Reset active filters so user immediately sees the new dishes
+        setTierFilter('all');
+        setSelectedCuisine('All');
+        setSearchQuery('');
+        setOnlyFavorites(false);
+
         playChime('high');
         confetti({
           particleCount: 60,
@@ -499,6 +505,12 @@ export function App() {
           onGenerate={handleGenerateCustomDishes}
           isLoading={isGenerating}
           inStockPantryCount={inStockPantryCount}
+          recentDishes={customRecipes}
+          onCookRecipe={handleStartCooking}
+          onClearRecent={() => {
+            localStorage.removeItem('moms_rasoi_custom_recipes_v1');
+            setCustomRecipes([]);
+          }}
         />
 
         {generationError && (
@@ -655,7 +667,7 @@ export function App() {
               >
                 <span>All Dishes</span>
                 <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded-full">
-                  {RECIPES.length}
+                  {allAvailableRecipes.length}
                 </span>
               </button>
 

@@ -113,7 +113,29 @@ RULES:
 
     const data = await apiRes.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-    const recipes = JSON.parse(rawText);
+    
+    // Safely parse JSON even if surrounded by markdown code fences or extra text
+    let clean = rawText.trim();
+    if (clean.startsWith('```json')) {
+      clean = clean.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+    } else if (clean.startsWith('```')) {
+      clean = clean.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    clean = clean.trim();
+
+    let recipes: any[] = [];
+    try {
+      const parsed = JSON.parse(clean);
+      recipes = Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      const start = clean.indexOf('[');
+      const end = clean.lastIndexOf(']');
+      if (start !== -1 && end > start) {
+        recipes = JSON.parse(clean.slice(start, end + 1));
+      } else {
+        throw new Error('Failed to parse recipe JSON from Gemini response.');
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, recipes }), {
       status: 200,

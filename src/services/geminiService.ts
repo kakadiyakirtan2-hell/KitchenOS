@@ -196,14 +196,48 @@ RULES:
 
   if (!directRes.ok) {
     const errorText = await directRes.text();
-    throw new Error(`Gemini Error: ${errorText}`);
+    let msg = errorText;
+    try {
+      const errObj = JSON.parse(errorText);
+      msg = errObj?.error?.message || errorText;
+    } catch {}
+    throw new Error(`Gemini Error: ${msg}`);
   }
 
   const directData = await directRes.json();
   const rawText = directData?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-  const recipes = JSON.parse(rawText);
+  const recipes = parseJsonSafely(rawText);
 
   return normalizeGeneratedRecipes(recipes);
+}
+
+function parseJsonSafely(text: string): any[] {
+  if (!text) return [];
+  let clean = text.trim();
+  if (clean.startsWith('```json')) {
+    clean = clean.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+  } else if (clean.startsWith('```')) {
+    clean = clean.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  }
+  clean = clean.trim();
+
+  try {
+    const parsed = JSON.parse(clean);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    const start = clean.indexOf('[');
+    const end = clean.lastIndexOf(']');
+    if (start !== -1 && end > start) {
+      try {
+        const sub = clean.slice(start, end + 1);
+        const parsed = JSON.parse(sub);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e2) {
+        console.error('Failed to parse extracted JSON substring', e2);
+      }
+    }
+    throw new Error('Could not parse recipes from AI response.');
+  }
 }
 
 function normalizeGeneratedRecipes(rawList: any[]): Recipe[] {
