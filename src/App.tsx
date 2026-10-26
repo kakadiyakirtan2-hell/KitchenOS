@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
-  Filter,
   ShoppingBag,
   Sparkles,
   Flame,
   CheckCircle2,
   AlertCircle,
-  Compass,
   Layers,
   Heart,
   Clock,
   RotateCcw,
-  ChefHat
+  ChefHat,
+  SlidersHorizontal,
+  ArrowRight,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 import {
   PantryItem,
@@ -58,6 +60,24 @@ import { VideoStudioModal } from './components/VideoStudioModal';
 import { MealJournalModal } from './components/MealJournalModal';
 import { SubstituteModal } from './components/SubstituteModal';
 
+// Essential staples for the quick-tap pantry rack on the home screen
+const QUICK_PANTRY_ITEMS = [
+  { id: 'potato', name: 'Potato', icon: '🥔' },
+  { id: 'onion', name: 'Onion', icon: '🧅' },
+  { id: 'tomato', name: 'Tomato', icon: '🍅' },
+  { id: 'paneer', name: 'Paneer', icon: '🧀' },
+  { id: 'rice', name: 'Rice', icon: '🍚' },
+  { id: 'atta', name: 'Atta', icon: '🌾' },
+  { id: 'ghee', name: 'Ghee', icon: '🧈' },
+  { id: 'curd', name: 'Curd', icon: '🥣' },
+  { id: 'green-chili', name: 'Chili', icon: '🌶️' },
+  { id: 'coriander', name: 'Coriander', icon: '🌿' },
+  { id: 'moong-dal', name: 'Moong Dal', icon: '🍲' },
+  { id: 'bread', name: 'Bread', icon: '🍞' },
+];
+
+const CUISINES = ['All', 'Indian Comfort', 'North Indian', 'South Indian', 'Gujarati', 'Street Food', 'Italian / Fusion'];
+
 export function App() {
   // 1. Persistent Pantry & User Data
   const [pantryItems, setPantryItems] = useState<PantryItem[]>(() => loadPantry());
@@ -81,8 +101,9 @@ export function App() {
   // 3. UI Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<MatchTier | 'all'>('all');
-  const [cuisineFilter, setCuisineFilter] = useState<string>('all');
+  const [selectedCuisine, setSelectedCuisine] = useState<string>('All');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [maxTimeFilter, setMaxTimeFilter] = useState<number>(60);
 
   // 4. Modals State
   const [isPantryOpen, setIsPantryOpen] = useState(false);
@@ -152,6 +173,11 @@ export function App() {
     [rankedRecipes]
   );
 
+  // Spotlight Recipe (Top scored dish)
+  const spotlightRecipe = useMemo(() => {
+    return rankedRecipes[0] || null;
+  }, [rankedRecipes]);
+
   // Filtered recipes
   const displayedRecipes = useMemo(() => {
     return rankedRecipes.filter((item) => {
@@ -159,11 +185,16 @@ export function App() {
       if (tierFilter !== 'all' && item.tier !== tierFilter) return false;
 
       // Cuisine filter
-      if (cuisineFilter !== 'all') {
-        if (!item.recipe.cuisine.toLowerCase().includes(cuisineFilter.toLowerCase())) {
+      if (selectedCuisine !== 'All') {
+        const cLower = selectedCuisine.toLowerCase();
+        if (!item.recipe.cuisine.toLowerCase().includes(cLower)) {
           return false;
         }
       }
+
+      // Max time filter
+      const totalMins = item.recipe.prepTime + item.recipe.cookTime;
+      if (totalMins > maxTimeFilter) return false;
 
       // Favorites filter
       if (onlyFavorites) {
@@ -186,7 +217,15 @@ export function App() {
 
       return true;
     });
-  }, [rankedRecipes, tierFilter, cuisineFilter, onlyFavorites, searchQuery, recipeNotes]);
+  }, [
+    rankedRecipes,
+    tierFilter,
+    selectedCuisine,
+    maxTimeFilter,
+    onlyFavorites,
+    searchQuery,
+    recipeNotes
+  ]);
 
   // Pantry handlers
   const handleTogglePantryItem = (id: string) => {
@@ -231,7 +270,6 @@ export function App() {
           item.id === match.id ? { ...item, inStock: true } : item
         );
       }
-      // Add as custom item
       const newItem: PantryItem = {
         id: `custom-${Date.now()}`,
         name: ingredientName,
@@ -300,34 +338,8 @@ export function App() {
 
   const inStockPantryCount = pantryItems.filter((i) => i.inStock).length;
 
-  // Time of Day Greeting for Mom
-  const greetingText = useMemo(() => {
-    if (mealSlot === 'Breakfast') {
-      return {
-        title: 'Good Morning, Mom! 🌅',
-        subtitle: "Here is what you can prepare for wholesome breakfast with today's kitchen stock."
-      };
-    }
-    if (mealSlot === 'Lunch') {
-      return {
-        title: 'Good Afternoon, Mom! ☀️',
-        subtitle: 'Warm, satisfying midday meal suggestions strictly matched to your pantry ingredients.'
-      };
-    }
-    if (mealSlot === 'Snacks') {
-      return {
-        title: 'Chai & Snacks Time, Mom! ☕',
-        subtitle: 'Crispy fritters, savory pancakes, and fragrant tea treats for the family.'
-      };
-    }
-    return {
-      title: 'Good Evening, Mom! 🌙',
-      subtitle: 'Nourishing, comforting dinner options ready in under 25 minutes.'
-    };
-  }, [mealSlot]);
-
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#2D3142] flex flex-col selection:bg-[#E06D53]/20 selection:text-[#E06D53]">
+    <div className="min-h-screen bg-[#FAF6EF] text-[#2D3142] flex flex-col selection:bg-[#E06D53]/20 selection:text-[#E06D53]">
       {/* 1. Header Navigation Bar */}
       <Navbar
         inStockCount={inStockPantryCount}
@@ -348,44 +360,49 @@ export function App() {
         }}
       />
 
-      {/* 2. Hero Warm Greeting Banner */}
-      <section className="bg-gradient-to-b from-[#F7F3EB] to-[#FDFBF7] border-b border-[#EBDDCF] py-6 sm:py-8 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* 2. Hero Warm Kitchen Studio Banner with Ambient Glow */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#F3EADF] via-[#F8F2E9] to-[#FAF6EF] border-b border-[#E8DCCF] pt-6 pb-8 px-4 sm:px-6">
+        {/* Soft ambient lighting orb */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-br from-[#E06D53]/15 to-[#F59E0B]/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#588157] animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#588157]">
-                Live Algorithmic Kitchen Matcher
+            <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-[#E4D7C5] shadow-2xs mb-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E06D53] animate-pulse" />
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#E06D53]">
+                Mom’s Rasoi Studio Console
+              </span>
+              <span className="text-gray-300">•</span>
+              <span className="text-[11px] text-[#7D7065] font-bold">
+                100% Algorithmic Kitchen Matcher
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#2D3142] font-heading mt-1">
-              {greetingText.title}
+
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#2D3142] font-heading tracking-tight leading-tight">
+              What should Mom cook{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E06D53] via-[#E87A62] to-[#F59E0B]">
+                right now?
+              </span>
             </h2>
-            <p className="text-xs sm:text-sm text-[#7D7065] mt-1 max-w-2xl leading-relaxed">
-              {greetingText.subtitle}
+            <p className="text-xs sm:text-sm text-[#7D7065] mt-1.5 max-w-2xl leading-relaxed">
+              Filtered strictly by what is in your kitchen stock, your current meal window, the weather, and your energy meter.
             </p>
           </div>
 
-          {/* Quick Shortcuts Pill Group */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setIsContinuousCookingOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-[#E06D53] hover:bg-[#c9573f] text-white font-heading font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-[#E06D53]/25 transition-all cursor-pointer"
-            >
-              <Layers className="w-4 h-4" />
-              <span>Multi-Dish Stove Flow</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setVideoStudioInitialId(null);
-                setIsVideoStudioOpen(true);
-              }}
-              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-gray-50 border border-[#E8DEC8] text-[#2D3142] font-heading font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-[#F59E0B]" />
-              <span>Video Studio</span>
-            </button>
+          {/* Quick Metrics Capsule */}
+          <div className="flex items-center gap-3 bg-white/90 backdrop-blur-md p-2.5 rounded-3xl border border-[#E4D7C5] shadow-kitchen">
+            <div className="px-4 py-2 bg-[#EBF5EE] rounded-2xl border border-[#588157]/20 text-center">
+              <p className="text-[10px] font-black text-[#1E5224] uppercase">Ready Now</p>
+              <p className="text-xl font-black text-[#2E5E2D] font-mono">{readyCount}</p>
+            </div>
+            <div className="px-4 py-2 bg-[#FFFBEB] rounded-2xl border border-[#F59E0B]/20 text-center">
+              <p className="text-[10px] font-black text-[#92400E] uppercase">Missing 1-2</p>
+              <p className="text-xl font-black text-[#B45309] font-mono">{missingCount}</p>
+            </div>
+            <div className="px-4 py-2 bg-[#F7F3EB] rounded-2xl border border-[#E8DEC8] text-center">
+              <p className="text-[10px] font-black text-[#7D7065] uppercase">In Stock</p>
+              <p className="text-xl font-black text-[#2D3142] font-mono">{inStockPantryCount}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -411,7 +428,128 @@ export function App() {
           }}
         />
 
-        {/* Tier Summary Tabs & Search Bar (Feature C) */}
+        {/* 4. Interactive Quick-Tap Pantry Rack (The Spice & Veggie Basket) */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#E8DCCF] shadow-kitchen-card flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-xl bg-[#588157]/10 text-[#588157]">
+                <ShoppingBag className="w-4 h-4" />
+              </span>
+              <div>
+                <h4 className="text-xs sm:text-sm font-extrabold text-[#2D3142] font-heading uppercase tracking-wide">
+                  Quick Kitchen Tap Rack
+                </h4>
+                <p className="text-[11px] text-[#7D7065]">
+                  Tap staples to toggle in/out of stock. Dishes update in real time!
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsPantryOpen(true)}
+              className="text-xs font-black text-[#E06D53] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>View All ({pantryItems.length}) 👉</span>
+            </button>
+          </div>
+
+          {/* Quick Tap Chips Carousel */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
+            {QUICK_PANTRY_ITEMS.map((item) => {
+              const pantryItem = pantryItems.find((p) => p.id === item.id);
+              const inStock = pantryItem ? pantryItem.inStock : false;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    playChime(inStock ? 'low' : 'high');
+                    handleTogglePantryItem(item.id);
+                  }}
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all border-2 cursor-pointer active:scale-95 select-none ${
+                    inStock
+                      ? 'bg-[#EBF5EE] border-[#588157] text-[#1E5224] shadow-xs'
+                      : 'bg-[#F7F3EB] border-dashed border-[#DFD3C3] text-gray-400 hover:border-gray-400'
+                  }`}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <span>{item.name}</span>
+                  <span
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                      inStock ? 'bg-[#588157] text-white' : 'bg-gray-200 text-gray-500'
+                    }`}
+                  >
+                    {inStock ? '✓' : '✕'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 5. Spotlight Hero: "Mom's Top Stovetop Match" */}
+        {spotlightRecipe && (
+          <div className="bg-gradient-to-r from-[#2D1F17] via-[#36261E] to-[#2B1B15] text-white rounded-3xl p-6 sm:p-8 border border-[#523E33] shadow-kitchen-console flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+            {/* Animated background glow */}
+            <div className="absolute -top-12 -right-12 w-64 h-64 bg-[#E06D53]/25 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex items-start gap-4 sm:gap-5 z-10">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-[#E06D53] to-[#F59E0B] flex items-center justify-center text-4xl shadow-2xl shrink-0">
+                <span className="animate-gentle-float">{spotlightRecipe.recipe.emoji || '🍲'}</span>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="bg-[#E06D53] text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider flex items-center gap-1">
+                    <Award className="w-3 h-3" />
+                    <span>Top Recommendation</span>
+                  </span>
+                  <span className="text-xs text-[#F59E0B] font-bold">
+                    ★ {spotlightRecipe.finalScore}% Match
+                  </span>
+                </div>
+
+                <h3 className="text-xl sm:text-2xl font-black font-heading text-white">
+                  {spotlightRecipe.recipe.title}
+                </h3>
+                {spotlightRecipe.recipe.hindiTitle && (
+                  <p className="text-xs font-semibold text-[#ECCF9B] mt-0.5">
+                    {spotlightRecipe.recipe.hindiTitle}
+                  </p>
+                )}
+                <p className="text-xs sm:text-sm text-white/70 max-w-xl mt-1.5 leading-relaxed line-clamp-2">
+                  {spotlightRecipe.recipe.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Button for Spotlight */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto z-10">
+              <button
+                onClick={() => {
+                  playChime('high');
+                  handleStartCooking(spotlightRecipe.recipe);
+                }}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#E06D53] to-[#F59E0B] text-white font-heading font-black text-sm flex items-center justify-center gap-2 shadow-kitchen-button hover:brightness-110 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <span>Cook This Now</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              {spotlightRecipe.recipe.techniques && (
+                <button
+                  onClick={() => handleOpenTechniqueVideo(spotlightRecipe.recipe.techniques![0])}
+                  className="w-full sm:w-auto px-4 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition-all cursor-pointer whitespace-nowrap"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" />
+                  <span>Watch Technique</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 6. Filter & Search Control Bar */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             {/* Output Tiers Selector Buttons */}
@@ -421,14 +559,14 @@ export function App() {
                   playChime('med');
                   setTierFilter('all');
                 }}
-                className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                   tierFilter === 'all'
                     ? 'bg-[#2D3142] text-white shadow-md'
                     : 'bg-white text-[#7D7065] border border-[#E8DEC8] hover:bg-gray-50'
                 }`}
               >
                 <span>All Dishes</span>
-                <span className="text-[11px] bg-white/20 px-1.5 py-0.5 rounded-full">
+                <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded-full">
                   {RECIPES.length}
                 </span>
               </button>
@@ -438,14 +576,14 @@ export function App() {
                   playChime('med');
                   setTierFilter('ready');
                 }}
-                className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                   tierFilter === 'ready'
-                    ? 'bg-[#588157] text-white shadow-md'
-                    : 'bg-white text-[#2E5E2D] border border-[#588157]/30 hover:bg-[#588157]/10'
+                    ? 'bg-[#588157] text-white shadow-md ring-2 ring-[#588157]/20'
+                    : 'bg-white text-[#1E5224] border border-[#588157]/30 hover:bg-[#588157]/10'
                 }`}
               >
                 <span>🟢 Ready to Cook!</span>
-                <span className="text-[11px] bg-white/30 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="text-[11px] bg-white/30 px-2 py-0.5 rounded-full font-black">
                   {readyCount}
                 </span>
               </button>
@@ -455,14 +593,14 @@ export function App() {
                   playChime('med');
                   setTierFilter('missing-few');
                 }}
-                className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                   tierFilter === 'missing-few'
-                    ? 'bg-[#F59E0B] text-black shadow-md'
+                    ? 'bg-[#F59E0B] text-black shadow-md ring-2 ring-[#F59E0B]/20'
                     : 'bg-white text-[#92400E] border border-[#F59E0B]/30 hover:bg-[#F59E0B]/10'
                 }`}
               >
                 <span>🟡 Missing 1-2 Items</span>
-                <span className="text-[11px] bg-black/15 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="text-[11px] bg-black/15 px-2 py-0.5 rounded-full font-black">
                   {missingCount}
                 </span>
               </button>
@@ -472,14 +610,14 @@ export function App() {
                   playChime('med');
                   setTierFilter('explore');
                 }}
-                className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                   tierFilter === 'explore'
                     ? 'bg-[#7D7065] text-white shadow-md'
                     : 'bg-white text-[#7D7065] border border-[#E8DEC8] hover:bg-gray-50'
                 }`}
               >
                 <span>⚪ Explore Others</span>
-                <span className="text-[11px] bg-white/30 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="text-[11px] bg-white/30 px-2 py-0.5 rounded-full font-black">
                   {exploreCount}
                 </span>
               </button>
@@ -494,7 +632,7 @@ export function App() {
                   placeholder="Search khichdi, paneer, paratha..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-[#E8DEC8] text-xs sm:text-sm text-[#2D3142] focus:outline-none focus:border-[#E06D53]"
+                  className="w-full pl-9 pr-3 py-2 bg-white rounded-2xl border border-[#E8DEC8] text-xs sm:text-sm text-[#2D3142] focus:outline-none focus:border-[#E06D53]"
                 />
               </div>
 
@@ -504,7 +642,7 @@ export function App() {
                   playChime('med');
                   setOnlyFavorites(!onlyFavorites);
                 }}
-                className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                className={`p-2.5 rounded-2xl border transition-all cursor-pointer ${
                   onlyFavorites
                     ? 'bg-red-50 border-red-300 text-red-500 shadow-2xs'
                     : 'bg-white border-[#E8DEC8] text-gray-400 hover:text-red-400'
@@ -516,26 +654,31 @@ export function App() {
             </div>
           </div>
 
-          {/* Low Pantry Alert Banner if less than 15 items in stock */}
-          {inStockPantryCount < 15 && (
-            <div className="p-3.5 bg-[#FFF9F2] rounded-2xl border border-[#F5D8BA] flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-[#8C3A00]">
-                <ShoppingBag className="w-4 h-4 text-[#E06D53] shrink-0" />
-                <span>
-                  Mom, you only have <strong>{inStockPantryCount} items</strong> checked in your pantry.
-                </span>
-              </div>
-              <button
-                onClick={handleResetDefaults}
-                className="px-3 py-1.5 rounded-xl bg-[#E06D53] text-white text-xs font-bold shadow-xs hover:bg-[#c9573f] transition-all cursor-pointer"
-              >
-                Restock Standard Indian Staples
-              </button>
-            </div>
-          )}
+          {/* Cuisine Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
+            {CUISINES.map((c) => {
+              const isSelected = selectedCuisine === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => {
+                    playChime('med');
+                    setSelectedCuisine(c);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-[#E06D53] text-white shadow-2xs'
+                      : 'bg-white text-[#7D7065] border border-[#E8DEC8] hover:bg-gray-50'
+                  }`}
+                >
+                  {c}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* 4. Recipe Grid */}
+        {/* 7. Recipe Grid (The Gourmet Studio) */}
         {displayedRecipes.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-[#EBDDCF] shadow-kitchen">
             <span className="text-4xl mb-3 block">🍳</span>
@@ -549,6 +692,7 @@ export function App() {
               <button
                 onClick={() => {
                   setTierFilter('all');
+                  setSelectedCuisine('All');
                   setSearchQuery('');
                   setOnlyFavorites(false);
                 }}
@@ -582,12 +726,13 @@ export function App() {
         )}
       </main>
 
-      {/* 5. Footer */}
-      <footer className="bg-[#F7F3EB] border-t border-[#EBDDCF] py-6 px-4 sm:px-6 mt-12 text-center text-xs text-[#7D7065]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 font-heading font-bold text-[#2D3142]">
-            <span>🍲 Mom’s Rasoi</span>
-            <span>•</span>
+      {/* 8. Footer */}
+      <footer className="bg-[#F4ECE1] border-t border-[#E8DCCF] py-8 px-4 sm:px-6 mt-12 text-center text-xs text-[#7D7065]">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 font-heading font-black text-[#2D3142]">
+            <span className="text-xl">🍲</span>
+            <span>Mom’s Rasoi OS 2.0</span>
+            <span className="text-gray-300">•</span>
             <span className="font-normal text-[#7D7065]">
               Algorithmic Local Kitchen Assistant
             </span>

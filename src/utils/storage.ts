@@ -15,11 +15,16 @@ export function loadPantry(): PantryItem[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      const inStockCount = parsed.filter((i: PantryItem) => i.inStock).length;
+      // If someone has 0 items in stock (or corrupted), restore default staples
+      if (inStockCount > 3) {
+        return parsed;
+      }
     }
   } catch (err) {
     console.warn('Failed to load pantry from localStorage, seeding defaults', err);
   }
+  savePantry(DEFAULT_PANTRY_ITEMS);
   return DEFAULT_PANTRY_ITEMS;
 }
 

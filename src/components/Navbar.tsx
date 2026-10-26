@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   Layers,
@@ -6,11 +6,12 @@ import {
   Calendar,
   Volume2,
   VolumeX,
-  ChefHat,
-  Clock
+  Flame,
+  Clock,
+  ChefHat
 } from 'lucide-react';
 import { MealSlot } from '../types';
-import { playChime, isSoundEnabled, setSoundEnabled } from '../utils/audio';
+import { playChime } from '../utils/audio';
 
 interface NavbarProps {
   inStockCount: number;
@@ -22,6 +23,7 @@ interface NavbarProps {
   onOpenJournal: () => void;
   soundOn: boolean;
   onToggleSound: () => void;
+  activeStoveCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,91 +35,134 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenVideoStudio,
   onOpenJournal,
   soundOn,
-  onToggleSound
+  onToggleSound,
+  activeStoveCount = 0
 }) => {
+  // Live clock
+  const [timeStr, setTimeStr] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setTimeStr(
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      );
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-40 bg-[#FDFBF7]/90 backdrop-blur-md border-b border-[#EBDDCF] transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-        {/* Brand Logo & Title */}
+    <header className="sticky top-0 z-40 glass-kitchen border-b border-[#EADFCF]/80 shadow-xs transition-all">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3">
+        {/* Left: Brand & Live Appliance Status */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#E06D53] to-[#F59E0B] text-white flex items-center justify-center shadow-md shadow-[#E06D53]/20">
-            <span className="text-2xl">🍲</span>
+          <div className="relative group cursor-pointer" onClick={onOpenContinuousCooking}>
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-[#E06D53] via-[#E87A62] to-[#F59E0B] text-white flex items-center justify-center shadow-kitchen-button transform group-hover:scale-105 transition-all">
+              <span className="text-2xl animate-gentle-float">🍲</span>
+            </div>
+            {/* Live flame dot on icon */}
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            </span>
           </div>
+
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-extrabold text-[#2D3142] font-heading tracking-tight">
-                Mom’s Rasoi
+              <h1 className="text-lg sm:text-xl font-extrabold text-[#2D3142] font-heading tracking-tight flex items-center gap-1.5">
+                <span>Mom’s Rasoi</span>
+                <span className="text-[10px] font-bold tracking-widest text-[#E06D53] uppercase bg-[#E06D53]/10 px-2 py-0.5 rounded-md border border-[#E06D53]/20">
+                  OS 2.0
+                </span>
               </h1>
-              <span className="hidden sm:inline-block bg-[#E06D53]/15 text-[#E06D53] text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider">
-                Kitchen Studio
+            </div>
+
+            {/* Live Appliance Meter Status */}
+            <div className="flex items-center gap-2 text-[11px] text-[#7D7065] font-medium">
+              <span className="flex items-center gap-1 text-[#2D3142] font-semibold">
+                <Clock className="w-3 h-3 text-[#E06D53]" />
+                <span>{timeStr || 'LIVE'}</span>
+              </span>
+              <span className="text-gray-300">•</span>
+              <span className="text-[#588157] font-bold">
+                {currentMealSlot.toUpperCase()} READY
               </span>
             </div>
-            <p className="text-[11px] text-[#7D7065] hidden sm:block">
-              Algorithmic smart pantry cooking assistant for Mom
-            </p>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Pantry Button */}
+        {/* Right: Tactile Quick-Action Console Pills */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Smart Pantry Button with Glowing Count */}
           <button
             onClick={() => {
               playChime('med');
               onOpenPantry();
             }}
-            className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border border-[#E8DEC8] hover:border-[#588157] text-[#2D3142] shadow-xs hover:shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2 rounded-2xl bg-white border border-[#E4D7C5] hover:border-[#588157] text-[#2D3142] shadow-xs hover:shadow-kitchen transition-all cursor-pointer group"
           >
-            <ShoppingBag className="w-4 h-4 text-[#588157]" />
-            <span className="text-xs font-bold hidden md:inline">Pantry:</span>
-            <span className="text-xs font-extrabold text-[#588157] bg-[#588157]/15 px-2 py-0.5 rounded-full">
+            <div className="p-1 rounded-lg bg-[#588157]/10 text-[#588157] group-hover:scale-110 transition-transform">
+              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </div>
+            <div className="text-left hidden md:block leading-tight">
+              <p className="text-[10px] text-[#7D7065] font-medium">Stock</p>
+              <p className="text-xs font-extrabold text-[#2D3142]">Pantry</p>
+            </div>
+            <span className="text-xs font-black text-[#2E5E2D] bg-[#EAF4EB] px-2 py-0.5 rounded-full border border-[#588157]/20 shadow-2xs">
               {inStockCount}
             </span>
           </button>
 
-          {/* Continuous Stove Flow Button */}
+          {/* Continuous Multi-Dish Stove Flow */}
           <button
             onClick={() => {
               playChime('med');
               onOpenContinuousCooking();
             }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border border-[#E8DEC8] hover:border-[#E06D53] text-[#2D3142] shadow-xs hover:shadow-sm transition-all cursor-pointer"
-            title="Multi-dish continuous stovetop flow coordinator"
+            className="flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2 rounded-2xl bg-white border border-[#E4D7C5] hover:border-[#E06D53] text-[#2D3142] shadow-xs hover:shadow-kitchen transition-all cursor-pointer group"
+            title="Multi-Dish Simultaneous Stovetop Flow"
           >
-            <Layers className="w-4 h-4 text-[#E06D53]" />
-            <span className="text-xs font-bold hidden lg:inline">Continuous Flow</span>
+            <div className="p-1 rounded-lg bg-[#E06D53]/10 text-[#E06D53] group-hover:scale-110 transition-transform">
+              <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E06D53]" />
+            </div>
+            <div className="text-left hidden lg:block leading-tight">
+              <p className="text-[10px] text-[#7D7065] font-medium">3-Burner</p>
+              <p className="text-xs font-extrabold text-[#2D3142]">Stove Flow</p>
+            </div>
           </button>
 
-          {/* Video Studio Button */}
+          {/* Video Studio Button with Golden Shimmer */}
           <button
             onClick={() => {
               playChime('med');
               onOpenVideoStudio();
             }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-[#FFF5EE] to-[#FFF0E6] border border-[#F5D8BA] hover:border-[#E06D53] text-[#E06D53] shadow-xs hover:shadow-sm transition-all cursor-pointer"
-            title="Interactive animated video demonstrations for cooking techniques"
+            className="flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2 rounded-2xl bg-gradient-to-r from-[#FFF5EC] to-[#FEF3E2] border border-[#F5D4B2] hover:border-[#E06D53] text-[#9A4600] shadow-xs hover:shadow-kitchen transition-all cursor-pointer group"
+            title="Interactive Cooking Video Demonstrations"
           >
-            <Sparkles className="w-4 h-4 text-[#F59E0B]" />
-            <span className="text-xs font-bold hidden sm:inline">Video Studio</span>
+            <Sparkles className="w-4 h-4 text-[#F59E0B] group-hover:rotate-12 transition-transform" />
+            <span className="text-xs font-extrabold hidden sm:inline">
+              Video Studio
+            </span>
           </button>
 
-          {/* Journal Button */}
+          {/* Meal Journal & Notes */}
           <button
             onClick={() => {
               playChime('med');
               onOpenJournal();
             }}
-            className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-white border border-[#E8DEC8] hover:border-[#2D3142] text-[#2D3142] shadow-xs transition-all cursor-pointer"
-            title="Mom's Daily Meal Log & Notes"
+            className="p-2 sm:p-2.5 rounded-2xl bg-white border border-[#E4D7C5] hover:border-[#2D3142] text-[#2D3142] shadow-xs transition-all cursor-pointer"
+            title="Mom's Daily Meal Log & Secret Notes"
           >
             <Calendar className="w-4 h-4 text-[#2D3142]" />
-            <span className="text-xs font-bold hidden xl:inline ml-1">Diary</span>
           </button>
 
           {/* Audio Chimes Toggle */}
           <button
             onClick={onToggleSound}
-            className="p-2 rounded-2xl bg-white border border-[#E8DEC8] hover:bg-gray-50 text-gray-500 hover:text-[#2D3142] transition-all cursor-pointer"
+            className="p-2 sm:p-2.5 rounded-2xl bg-white border border-[#E4D7C5] hover:bg-gray-50 text-gray-500 hover:text-[#2D3142] transition-all cursor-pointer"
             title={soundOn ? 'Mute Kitchen Audio Chimes' : 'Enable Kitchen Audio Chimes'}
           >
             {soundOn ? (
